@@ -25,11 +25,10 @@ classifiers = [
 dependencies = [
     "numpy",
     "scipy",
-    "scikit-image",
     "h5py",
-    "pandas",
     "matplotlib",
-    "hcipy",
+    "pandas",
+    "skyfield",
     "importlib_resources>1.3; python_version < '3.10'"
 ]
 
