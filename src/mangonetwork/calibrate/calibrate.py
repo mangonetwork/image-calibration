@@ -24,26 +24,29 @@ import numpy as np
 from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation
 
-if sys.version_info < (3, 9):
-    import importlib_resources as resources
-else:
-    from importlib import resources
+#if sys.version_info < (3, 9):
+#    import importlib_resources as resources
+#else:
+#    from importlib import resources
 
 
 class Calibrate:
     """Camera calibration"""
 
-    def __init__(self, config_file, starcal_file, output):
+    #def __init__(self, config_file, starcal_file, output):
+    def __init__(self, starcal_file, output, config=None):
         self.find_calibration_params(starcal_file)
-        self.save_calibration_params(output, config_file)
+        self.save_calibration_params(output, config)
+        #self.save_calibration_params(output)
 
     def find_calibration_params(self, starcal_file):
         """Load calibration parameters from starcal file"""
 
         # read in data from starcal file
-        star_az, star_el, x, y = np.loadtxt(
-            io.StringIO(starcal_file), usecols=(1, 2, 3, 4), unpack=True
-        )
+        #star_az, star_el, x, y = np.loadtxt(
+        #    io.StringIO(starcal_file), usecols=(1, 2, 3, 4), unpack=True
+        #)
+        star_az, star_el, x, y = np.loadtxt(starcal_file, usecols=(1, 2, 3, 4), unpack=True)
 
         # true x,y positions of stars
         xp = np.cos(star_el * np.pi / 180.0) * np.sin(star_az * np.pi / 180.0)
@@ -118,20 +121,45 @@ class Calibrate:
 
         return [x0, y0, rl, theta, C, D]
 
+    #def save_calibration_params(self, output, config_file):
     def save_calibration_params(self, output, config_file):
         """Save results"""
 
-        config = configparser.ConfigParser()
-        config.read_string(config_file)
+        params = dict(x0 = str(self.x0),
+                      y0 = str(self.y0),
+                      rl = str(self.rl),
+                      theta = str(self.theta),
+                      a = str(self.A),
+                      b = str(self.B),
+                      c = str(self.C),
+                      d = str(self.D))
 
-        config.set("CALIBRATION_PARAMS", "X0", str(self.x0))
-        config.set("CALIBRATION_PARAMS", "Y0", str(self.y0))
-        config.set("CALIBRATION_PARAMS", "RL", str(self.rl))
-        config.set("CALIBRATION_PARAMS", "THETA", str(self.theta))
-        config.set("CALIBRATION_PARAMS", "A", str(self.A))
-        config.set("CALIBRATION_PARAMS", "B", str(self.B))
-        config.set("CALIBRATION_PARAMS", "C", str(self.C))
-        config.set("CALIBRATION_PARAMS", "D", str(self.D))
+        config = configparser.ConfigParser()
+
+        # If a real filename is provide for a config file, read it in
+        if config_file:
+            #config.read_string(config_file)
+            config.read(config_file)
+
+        config["CALIBRATION_PARAMS"] = dict(
+                x0 = str(self.x0),
+                y0 = str(self.y0),
+                rl = str(self.rl),
+                theta = str(self.theta),
+                a = str(self.A),
+                b = str(self.B),
+                c = str(self.C),
+                d = str(self.D))
+
+
+#        config.set("CALIBRATION_PARAMS", "X0", str(self.x0))
+#        config.set("CALIBRATION_PARAMS", "Y0", str(self.y0))
+#        config.set("CALIBRATION_PARAMS", "RL", str(self.rl))
+#        config.set("CALIBRATION_PARAMS", "THETA", str(self.theta))
+#        config.set("CALIBRATION_PARAMS", "A", str(self.A))
+#        config.set("CALIBRATION_PARAMS", "B", str(self.B))
+#        config.set("CALIBRATION_PARAMS", "C", str(self.C))
+#        config.set("CALIBRATION_PARAMS", "D", str(self.D))
 
         with open(output, "w", encoding="utf-8") as cf:
             config.write(cf)
@@ -149,6 +177,7 @@ def parse_args():
 
     parser.add_argument("station", help="Station code")
     parser.add_argument("instrument", help="redline or greenline")
+    parser.add_argument("-n", "--new", action="store_true", default=False, help="Generate new file from scratch")
 
     parser.add_argument(
         "-c", "--config", metavar="FILE", help="Alternate configuration file"
@@ -170,21 +199,31 @@ def parse_args():
 def find_config(station, instrument):
     """Find configuration file from pacakge data"""
 
-    config_file = f"{station}-{instrument}.ini"
+    # Placeholder for default config file location
+    #   This function can be rewritten later
+    config_dir = os.environ['MANGONETWORK_CONFIGS']
+
+    config_file = os.path.join(config_dir, f"{station}-{instrument}.ini")
 
     logging.debug("Using package configuration file: %s", config_file)
 
-    return resources.files('mangonetwork.raw.data').joinpath(config_file).read_text()
+    #return resources.files('mangonetwork.raw.data').joinpath(config_file).read_text()
+    return config_file
 
 
 def find_starcal(station, instrument):
-    """FInd starcal file in pacakge data"""
+    """Find starcal file in package data"""
 
-    starcal_file = f"starcal-{station}-{instrument}.txt"
+    # Placeholder for default config file location
+    #   This function can be rewritten later
+    config_dir = os.environ['MANGONETWORK_CONFIGS']
+
+    starcal_file = os.path.join(config_dir, f"starcal-{station}-{instrument}.txt")
 
     logging.debug("Using package starcal file: %s", starcal_file)
 
-    return resources.files("mangonetwork.raw.data").joinpath(starcal_file).read_text()
+    #return resources.files("mangonetwork.raw.data").joinpath(starcal_file).read_text()
+    return starcal_file
 
 
 def main():
@@ -199,27 +238,78 @@ def main():
     else:
         logging.basicConfig(format=fmt, level=logging.INFO)
 
-    if args.config:
-        logging.debug("Alternate configuration file: %s", args.config)
-        if not os.path.exists(args.config):
-            logging.error("Config file not found")
-            sys.exit(1)
-        with open(args.config, encoding="utf-8") as f:
-            config_contents = f.read()
-    else:
-        config_contents = find_config(args.station, args.instrument)
+#    if args.config:
+#        logging.debug("Alternate configuration file: %s", args.config)
+#        if not os.path.exists(args.config):
+#            logging.error("Config file not found")
+#            sys.exit(1)
+#        with open(args.config, encoding="utf-8") as f:
+#            config_contents = f.read()
+#    else:
+#        config_contents = find_config(args.station, args.instrument)
 
+#    if args.starcal:
+#        logging.debug("Alternate starcal file: %s", args.starcal)
+#        if not os.path.exists(args.starcal):
+#            logging.error("StarCal file not found")
+#            sys.exit(1)
+#        with open(args.starcal, encoding="utf-8") as f:
+#            starcal_contents = f.read()
+#    else:
+#        starcal_contents = find_starcal(args.station, args.instrument)
+#
+#
+#    if args.new:
+#        # If new flag set, generate a fresh starcal file
+#        logging.debug("Generating new starcal file")
+#        station = args.station
+#        instrument = args.instrument
+#        time = dt.datetime.fromisoformat(args.time)
+#        starcal_file = None
+
+    # Determine configuration filename
+    if args.new:
+        # If new flag set, generate a fresh starcal file
+        logging.debug("Generating new config file")
+        config_file = None
+    elif args.config:
+        logging.debug("Alternate configuration file: %s", args.config)
+        # If configuration file provided, check that it exists
+        if not os.path.exists(args.config):
+            logging.error("Configurationl file not found")
+            sys.exit(1)
+        logging.debug("Using provided configuration file: %s", args.config)
+        config_file = args.config
+    else:
+        # If no configuration file provided, find the default
+        config_file = find_config(args.station, args.instrument)
+        if not os.path.exists(config_file):
+            logging.error("No default configuration file found for %s %s!", args.station, args.instrument)
+            sys.exit(1)
+        logging.debug("Using defalt configuration file: %s", config_file)
+
+
+    # Determine starcal filename
     if args.starcal:
+        # If starcal file specified, check that it exists
         logging.debug("Alternate starcal file: %s", args.starcal)
         if not os.path.exists(args.starcal):
-            logging.error("StarCal file not found")
+            logging.error("Starcal file not found")
             sys.exit(1)
-        with open(args.starcal, encoding="utf-8") as f:
-            starcal_contents = f.read()
+        logging.debug("Using provided starcal file: %s", args.starcal)
+        starcal_file = args.starcal
     else:
-        starcal_contents = find_starcal(args.station, args.instrument)
+        # If no starcal file provided, find the default
+        starcal_file = find_starcal(args.station, args.instrument)
+        if not os.path.exists(starcal_file):
+            logging.error("No default starcal file found for %s %s!", args.station, args.instrument)
+            sys.exit(1)
+        logging.debug("Using defalt starcal file: %s", starcal_file)
 
-    Calibrate(config_contents, starcal_contents, args.output)
+
+
+    #Calibrate(config_contents, starcal_contents, args.output)
+    Calibrate(starcal_file, args.output, config=config_file)
 
     sys.exit(0)
 

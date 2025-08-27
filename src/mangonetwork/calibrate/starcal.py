@@ -302,6 +302,9 @@ def main():
     else:
         # If no starcal file provided, find the default and read in header
         starcal_file = find_starcal(args.station, args.instrument)
+        if not os.path.exists(starcal_file):
+            logging.error("No default starcal file found for %s %s!", args.station, args.instrument)
+            sys.exit(1)
         logging.debug("Using defalt starcal file: %s", starcal_file)
         station, instrument, time = read_header(starcal_file)
 
