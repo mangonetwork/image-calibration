@@ -47,10 +47,8 @@ class StarCal:
 
         image = self.load_image(image_file)
         self.find_stars(image, sc_file)
-        if sc_file:
-            self.append_starcal_file(sc_file)
-        else:
-            self.save_starcal_file(output_file)
+        self.save_starcal_file(output_file)
+
 
     def add_star(self, click):
         """Add user selected star and az,el based on HIP."""
@@ -78,7 +76,7 @@ class StarCal:
         # Append star information
         self.star_azel.append([azmt.degrees, elev.degrees])
         self.star_pos.append([x, y])
-        self.star_hip.append(hip)
+        self.star_hip.append(int(hip))
 
         # Mark star on plot
         self.ax.scatter(x, y, facecolors='none', edgecolors='r')
@@ -119,9 +117,16 @@ class StarCal:
         print(f'TIME: {self.time}')
         print(f'GLAT: {self.site_lat}\nGLON: {self.site_lon}')
 
-        self.star_hip = list()
-        self.star_azel = list()
-        self.star_pos = list()
+        # Initialize arrays
+        if sc_file:
+            hip, azmt, elev, x, y = np.loadtxt(sc_file, unpack=True)
+            self.star_hip = list(hip.astype(int))
+            self.star_azel = [[az, el] for az, el in zip(azmt, elev)]
+            self.star_pos = [[x1, y1] for x1, y1 in zip(x, y)]
+        else:
+            self.star_hip = list()
+            self.star_azel = list()
+            self.star_pos = list()
 
         # Display image with stars
         self.fig, self.ax = plt.subplots()
@@ -130,8 +135,7 @@ class StarCal:
         # Display image
         self.ax.imshow(image, cmap='gray')
         
-        if sc_file:
-            az, el, x, y = np.loadtxt(sc_file, usecols=(1,2,3,4), unpack=True)
+        for x, y in self.star_pos:
             self.ax.scatter(x, y, facecolors='none', edgecolors='r')
 
         plt.show()
@@ -159,29 +163,11 @@ class StarCal:
             f.write(f'# {self.time.isoformat()}\n')
             f.write(f'# GLAT={self.site_lat:10.6f}    GLON={self.site_lon:10.6f}\n')
             f.write(80*'#'+'\n\n')
-            f.write(f'# {"HIP":8}{"Azimuth":>20}{"Elevation":>20}{"X":>15}{"Y":>15}\n')
+            f.write(f'# {"HIP":>8}{"Azimuth":>20}{"Elevation":>20}{"X":>15}{"Y":>15}\n')
 
             # add new stars
             for hip, azel, pos in zip(self.star_hip, self.star_azel, self.star_pos):
-                f.write(f'{hip:10}{azel[0]:20.10f}{azel[1]:20.10f}{pos[0]:15.5f}{pos[1]:15.5f}\n')
-
-    def append_starcal_file(self, output):
-        """ Append new stars to an existing starcal file """
-
-        with open(output, 'a') as f:
-            # add new stars
-            for hip, azel, pos in zip(self.star_hip, self.star_azel, self.star_pos):
-                f.write(f'{hip:10}{azel[0]:20.10f}{azel[1]:20.10f}{pos[0]:15.5f}{pos[1]:15.5f}\n')
-
-
-#    def parse_file(self, star_cal_file):
-#        """Read starcal file"""
-#
-#        raw_filename = star_cal_file.split('\n')[0].split()[-1]
-#
-#        az, el, i, j = np.loadtxt(io.StringIO(star_cal_file), usecols=(1,2,3,4), unpack=True)
-#
-#        return az, el, i, j, raw_filename
+                f.write(f'{hip:10d}{azel[0]:20.10f}{azel[1]:20.10f}{pos[0]:15.5f}{pos[1]:15.5f}\n')
 
 
 
@@ -231,6 +217,7 @@ def parse_args():
 
     parser.add_argument("station", help="Station code")
     parser.add_argument("instrument", help="redline or greenline")
+    parser.add_argument("-n", "--new", action="store_true", default=False, help="Generate new file from scratch")
     parser.add_argument("-t", "--time", help="Time for star idenfication")
 
     parser.add_argument(
@@ -247,25 +234,32 @@ def parse_args():
     return parser.parse_args()
 
 
-#def find_starcal(station, instrument):
-#    """Find starcal file in package data"""
-#
-#    starcal_file = f"starcal-{station}-{instrument}.txt"
-#
-#    logging.debug("Using package starcal file: %s", starcal_file)
-#
-#    #return resources.files("mangonetwork.raw.data").joinpath(starcal_file).read_text()
-#    return starcal_file
+def find_starcal(station, instrument):
+    """Find starcal file in package data"""
 
-def read_header(sc_file):
+    # Placeholder for default config file location
+    #   This function can be rewritten later
+    config_dir = os.environ['MANGONETWORK_CONFIGS']
 
-    with open(sc_file, 'r') as f:
+    starcal_file = os.path.join(config_dir, f"starcal-{station}-{instrument}.txt")
+
+    logging.debug("Using package starcal file: %s", starcal_file)
+
+    #return resources.files("mangonetwork.raw.data").joinpath(starcal_file).read_text()
+    return starcal_file
+
+
+def read_header(starcal_file):
+    """Read header from starcal file"""
+
+    with open(starcal_file, 'r') as f:
         line1 = f.readline()
         _, station, instrument = line1.split()
         line2 = f.readline()
         time = dt.datetime.fromisoformat(line2.split()[1])
 
     return station, instrument, time
+
 
 def download_image(station, instrument, time):
     """Download image for star matching"""
@@ -288,28 +282,34 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-    if args.starcal:
-        logging.debug("Existing starcal file provided: %s", args.starcal)
-        logging.debug("Additional stars will be added to this file.")
-        station, instrument, time = read_header(args.starcal)
-        #print(station, instrument, time)
-    else:
+    if args.new:
+        # If new flag set, generate a fresh starcal file
+        logging.debug("Generating new starcal file")
         station = args.station
         instrument = args.instrument
         time = dt.datetime.fromisoformat(args.time)
+        starcal_file = None
 
-#        if not os.path.exists(args.starcal):
-#            logging.error("Config file not found")
-#            sys.exit(1)
-#        with open(args.starcal, encoding="utf-8") as f:
-#            contents = f.read()
-#    else:
-#        contents = find_starcal(args.station, args.instrument)
+    elif args.starcal:
+        # If starcal file provided, read in header
+        if not os.path.exists(args.starcal):
+            logging.error("Starcal file not found")
+            sys.exit(1)
+        logging.debug("Using provided starcal file: %s", args.starcal)
+        starcal_file = args.starcal
+        station, instrument, time = read_header(starcal_file)
 
-    #image_filename = download_image(args.station, args.instrument)
+    else:
+        # If no starcal file provided, find the default and read in header
+        starcal_file = find_starcal(args.station, args.instrument)
+        logging.debug("Using defalt starcal file: %s", starcal_file)
+        station, instrument, time = read_header(starcal_file)
+
+    # Download image
     image_filename = download_image(station, instrument, time)
-    #StarCal(contents, args.output)
-    StarCal(image_filename, args.output, sc_file=args.starcal)
+
+    # Run star calibration
+    StarCal(image_filename, args.output, sc_file=starcal_file)
 
     sys.exit(0)
 
