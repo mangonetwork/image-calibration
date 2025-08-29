@@ -46,7 +46,8 @@ class Calibrate:
         #star_az, star_el, x, y = np.loadtxt(
         #    io.StringIO(starcal_file), usecols=(1, 2, 3, 4), unpack=True
         #)
-        star_az, star_el, x, y = np.loadtxt(starcal_file, usecols=(1, 2, 3, 4), unpack=True)
+        #star_az, star_el, x, y = np.loadtxt(starcal_file, usecols=(1, 2, 3, 4), unpack=True)
+        star_num, star_az, star_el, x, y = np.loadtxt(starcal_file, unpack=True)
 
         # true x,y positions of stars
         xp = np.cos(star_el * np.pi / 180.0) * np.sin(star_az * np.pi / 180.0)
@@ -60,13 +61,28 @@ class Calibrate:
         self.A = np.pi / 2.0
         self.B = -(np.pi / 2.0 + self.C + self.D)
 
-        ## DEBUG: To confirm star locations match after transformation
-        #xt, yt = self.transform(x, y, self.x0, self.y0, self.rl,
-        #                          self.theta, self.A, self.B, self.C, self.D)
-        #import matplotlib.pyplot as plt
-        #plt.scatter(xp, yp)
-        #plt.scatter(xt, yt)
-        #plt.show()
+        # DEBUG: To confirm star locations match after transformation
+        xt, yt = self.transform(x, y, self.x0, self.y0, self.rl,
+                                  self.theta, self.A, self.B, self.C, self.D)
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax1 = fig.add_subplot(121)
+        ax2 = fig.add_subplot(122)
+        cmap=plt.get_cmap('tab20')
+        rp = np.sqrt((x-self.x0)**2+(y-self.y0)**2)/self.rl
+        for i in range(len(star_num)):
+            sc = ax1.scatter(xp[i], yp[i], s=5, color=cmap(i))
+            ax1.scatter(xt[i], yt[i], facecolors='none', edgecolors=cmap(i))
+            ax2.scatter(star_el[i], rp[i], label=int(star_num[i]))
+        ax1.set_xlabel(r'$X/R_L$')
+        ax1.set_ylabel(r'$Y/R_L$')
+        ax2.set_xlabel('Elevation (deg)')
+        ax2.set_ylabel('R')
+        r = np.arange(0., 1., 0.01)
+        t = self.A + self.B*r + self.C*r**2 + self.D*r**3
+        ax2.plot(np.rad2deg(t), r, color='dimgrey')
+        ax2.legend()
+        plt.show()
 
     # pylint: disable=too-many-arguments, too-many-locals
 
