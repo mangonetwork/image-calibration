@@ -33,6 +33,8 @@ import matplotlib.pyplot as plt
 
 from skyfield.api import Star, load, wgs84
 from skyfield.data import hipparcos
+from skyfield.named_stars import named_star_dict
+
 
 #if sys.version_info < (3, 9):
 #    import importlib_resources as resources
@@ -62,11 +64,12 @@ class StarCal:
 
         # User entered HIP number
         hip = input('HIP #: ')
+        hip = int(hip)
         print(hip)
 
         # Look up star based on HIP and calculate az/el
         try:
-            s = Star.from_dataframe(self.df.loc[float(hip)])
+            s = Star.from_dataframe(self.df.loc[hip])
         except KeyError:
             print(f'Entered Hipparcos designation {hip} is not in database!')
             return
@@ -76,7 +79,8 @@ class StarCal:
         # Append star information
         self.star_azel.append([azmt.degrees, elev.degrees])
         self.star_pos.append([x, y])
-        self.star_hip.append(int(hip))
+        self.star_hip.append(hip)
+        self.star_name.append(self.df.loc[hip]['name'])
 
         # Mark star on plot
         self.ax.scatter(x, y, facecolors='none', edgecolors='r')
@@ -108,8 +112,6 @@ class StarCal:
     def find_stars(self, image, sc_file=None):
         """Display image and track manual selection of stars"""
 
-        #az, el, i, j, raw_file = self.parse_file(star_cal_file)
-
         self.prep_star_lookup()
 
         print('Site Information\n'+16*'=')
@@ -118,15 +120,31 @@ class StarCal:
         print(f'GLAT: {self.site_lat}\nGLON: {self.site_lon}')
 
         # Initialize arrays
+        self.star_name = list()
+        self.star_hip = list()
+        self.star_azel = list()
+        self.star_pos = list()
         if sc_file:
-            hip, azmt, elev, x, y = np.loadtxt(sc_file, unpack=True)
-            self.star_hip = list(hip.astype(int))
-            self.star_azel = [[az, el] for az, el in zip(azmt, elev)]
-            self.star_pos = [[x1, y1] for x1, y1 in zip(x, y)]
-        else:
-            self.star_hip = list()
-            self.star_azel = list()
-            self.star_pos = list()
+            with open(sc_file) as f:
+                for line in f:
+                    # Skip lines that are comments or blank
+                    if (not line or line[0]=='#' or line.isspace()):
+                        continue
+                    name, hip, az, el, x, y = line.split()
+                    self.star_name.append(name)
+                    self.star_hip.append(int(hip))
+                    self.star_azel.append([float(az), float(el)])
+                    self.star_pos.append([float(x), float(y)])
+#            name, hip, azmt, elev, x, y = np.loadtxt(sc_file, unpack=True, usecols=(0,1,2,3,4,5), dtype={'format':('S', 'f', 'f','f','f','f')})
+#            self.star_name = ['name']*len(hip)
+#            self.star_hip = list(hip.astype(int))
+#            self.star_azel = [[az, el] for az, el in zip(azmt, elev)]
+#            self.star_pos = [[x1, y1] for x1, y1 in zip(x, y)]
+            self.check_stars()
+#        else:
+#            self.star_hip = list()
+#            self.star_azel = list()
+#            self.star_pos = list()
 
         # Display image with stars
         self.fig, self.ax = plt.subplots()
@@ -143,6 +161,8 @@ class StarCal:
 
     def prep_star_lookup(self):
         """Prepare skyfield for star lookups"""
+
+        # Define site location
         ts = load.timescale()
         t = ts.utc(self.time.year,self.time.month,self.time.day,self.time.hour,self.time.minute,self.time.second)
         planets = load('de421.bsp')
@@ -150,8 +170,35 @@ class StarCal:
         site = earth + wgs84.latlon(self.site_lat, self.site_lon, elevation_m=0)
         self.site_ref = site.at(t)
 
+        # Load HIP catolog
         with load.open(hipparcos.URL) as f:
-            self.df = hipparcos.load_dataframe(f)
+            df = hipparcos.load_dataframe(f)
+
+        # Add star names to HIP catolog
+        star_name_list = ['xxxxx']*len(df)
+        df['name'] = star_name_list
+        for name, hip in named_star_dict.items():
+            df.loc[hip,'name'] = name
+
+        filtered_df = df[df['name'] != 'xxxxx']
+        print(filtered_df)
+        self.df = df
+
+    def check_stars(self):
+        #hip_to_name = {v: k for k, v in named_star_dict.items()}
+
+        for name, hip, azel in zip(self.star_name, self.star_hip, self.star_azel):
+            #print(hip_to_name)
+            
+            #try:
+            #    name0 = hip_to_name[hip]
+            #except KeyError:
+            #    name0 = 'xxxxx'
+            print(hip, self.df.loc[hip]['name'], name)
+            s = Star.from_dataframe(self.df.loc[hip])
+            elev, azmt, _ = self.site_ref.observe(s).apparent().altaz()
+            #print(azmt.degrees, elev.degrees,  azel)
+
 
 
     def save_starcal_file(self, output):
@@ -163,11 +210,11 @@ class StarCal:
             f.write(f'# {self.time.isoformat()}\n')
             f.write(f'# GLAT={self.site_lat:10.6f}    GLON={self.site_lon:10.6f}\n')
             f.write(80*'#'+'\n\n')
-            f.write(f'# {"HIP":>8}{"Azimuth":>20}{"Elevation":>20}{"X":>15}{"Y":>15}\n')
+            f.write(f'# {"Name":<20}{"HIP":>8}{"Azimuth":>15}{"Elevation":>15}{"X":>10}{"Y":>10}\n')
 
             # add new stars
-            for hip, azel, pos in zip(self.star_hip, self.star_azel, self.star_pos):
-                f.write(f'{hip:10d}{azel[0]:20.10f}{azel[1]:20.10f}{pos[0]:15.5f}{pos[1]:15.5f}\n')
+            for name, hip, azel, pos in zip(self.star_name, self.star_hip, self.star_azel, self.star_pos):
+                f.write(f'{name:20s}{hip:10d}{azel[0]:15.4f}{azel[1]:15.4f}{pos[0]:10.2f}{pos[1]:10.2f}\n')
 
 
 
