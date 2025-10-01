@@ -69,7 +69,7 @@ class StarCal:
 
         # Look up star based on HIP and calculate az/el
         try:
-            s = Star.from_dataframe(self.df.loc[hip])
+            s = Star.from_dataframe(self.hipcat.loc[hip])
         except KeyError:
             print(f'Entered Hipparcos designation {hip} is not in database!')
             return
@@ -80,7 +80,7 @@ class StarCal:
         self.star_azel.append([azmt.degrees, elev.degrees])
         self.star_pos.append([x, y])
         self.star_hip.append(hip)
-        self.star_name.append(self.df.loc[hip]['name'])
+        self.star_name.append(self.hipcat.loc[hip,'name'])
 
         # Mark star on plot
         self.ax.scatter(x, y, facecolors='none', edgecolors='r')
@@ -105,7 +105,6 @@ class StarCal:
 
         cooked_image = np.array(image)
         cooked_image = equalize(cooked_image, contrast)
-        #cooked_image = imageops.rotate(cooked_image, rotation_angle)
 
         return cooked_image
 
@@ -135,16 +134,8 @@ class StarCal:
                     self.star_hip.append(int(hip))
                     self.star_azel.append([float(az), float(el)])
                     self.star_pos.append([float(x), float(y)])
-#            name, hip, azmt, elev, x, y = np.loadtxt(sc_file, unpack=True, usecols=(0,1,2,3,4,5), dtype={'format':('S', 'f', 'f','f','f','f')})
-#            self.star_name = ['name']*len(hip)
-#            self.star_hip = list(hip.astype(int))
-#            self.star_azel = [[az, el] for az, el in zip(azmt, elev)]
-#            self.star_pos = [[x1, y1] for x1, y1 in zip(x, y)]
+            # Check stars included in the provided starcal file against hip catolog
             self.check_stars()
-#        else:
-#            self.star_hip = list()
-#            self.star_azel = list()
-#            self.star_pos = list()
 
         # Display image with stars
         self.fig, self.ax = plt.subplots()
@@ -180,24 +171,20 @@ class StarCal:
         for name, hip in named_star_dict.items():
             df.loc[hip,'name'] = name
 
-        filtered_df = df[df['name'] != 'xxxxx']
-        print(filtered_df)
-        self.df = df
+        #filtered_df = df[df['name'] != 'xxxxx']
+        #print(filtered_df)
+        self.hipcat = df
 
     def check_stars(self):
-        #hip_to_name = {v: k for k, v in named_star_dict.items()}
+        """Check stars loaded from input starcal file against HIP catalog for consistency"""
 
         for name, hip, azel in zip(self.star_name, self.star_hip, self.star_azel):
-            #print(hip_to_name)
-            
-            #try:
-            #    name0 = hip_to_name[hip]
-            #except KeyError:
-            #    name0 = 'xxxxx'
-            print(hip, self.df.loc[hip]['name'], name)
-            s = Star.from_dataframe(self.df.loc[hip])
+            print('\nHIP: ', hip)
+            print('Name: ', self.hipcat.loc[hip]['name'], name)
+            s = Star.from_dataframe(self.hipcat.loc[hip])
             elev, azmt, _ = self.site_ref.observe(s).apparent().altaz()
-            #print(azmt.degrees, elev.degrees,  azel)
+            print('Azimuth: ', azmt.degrees, azel[0], azmt.degrees-azel[0])
+            print('Elevation: ', elev.degrees, azel[1], elev.degrees-azel[1])
 
 
 
