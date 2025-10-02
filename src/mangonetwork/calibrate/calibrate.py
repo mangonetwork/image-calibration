@@ -47,7 +47,7 @@ class Calibrate:
         #    io.StringIO(starcal_file), usecols=(1, 2, 3, 4), unpack=True
         #)
         #star_az, star_el, x, y = np.loadtxt(starcal_file, usecols=(1, 2, 3, 4), unpack=True)
-        star_num, star_az, star_el, x, y = np.loadtxt(starcal_file, unpack=True)
+        star_num, star_az, star_el, x, y = np.loadtxt(starcal_file, unpack=True, usecols=(1,2,3,4,5))
 
         # true x,y positions of stars
         xp = np.cos(star_el * np.pi / 180.0) * np.sin(star_az * np.pi / 180.0)
