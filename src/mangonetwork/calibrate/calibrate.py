@@ -71,13 +71,15 @@ class Calibrate:
         cmap=plt.get_cmap('tab20')
         rp = np.sqrt((x-self.x0)**2+(y-self.y0)**2)/self.rl
         for i in range(len(star_num)):
-            sc = ax1.scatter(xp[i], yp[i], s=5, color=cmap(i))
-            ax1.scatter(xt[i], yt[i], facecolors='none', edgecolors=cmap(i))
-            ax2.scatter(star_el[i], rp[i], label=int(star_num[i]))
+            sc = ax1.scatter(xp[i], yp[i], s=5, color=cmap(i%20))
+            ax1.scatter(xt[i], yt[i], facecolors='none', edgecolors=cmap(i%20))
+            ax2.scatter(star_el[i], rp[i], color=cmap(i%20), label=int(star_num[i]))
         ax1.set_xlabel(r'$X/R_L$')
         ax1.set_ylabel(r'$Y/R_L$')
         ax2.set_xlabel('Elevation (deg)')
         ax2.set_ylabel('R')
+        theta = np.linspace(0., 2*np.pi, 100)
+        ax1.plot(np.cos(theta), np.sin(theta), color='dimgrey')
         r = np.arange(0., 1., 0.01)
         t = self.A + self.B*r + self.C*r**2 + self.D*r**3
         ax2.plot(np.rad2deg(t), r, color='dimgrey')
