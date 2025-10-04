@@ -50,6 +50,7 @@ repository="https://github.com/mangonetwork/raw-image-processing"
 [project.scripts]
     mango-calibrate = "mangonetwork.calibrate.calibrate:main"
     mango-starcal = "mangonetwork.calibrate.starcal:main"
+    mango-checkcal = "mangonetwork.calibrate.checkcal:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
