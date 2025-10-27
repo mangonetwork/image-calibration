@@ -195,13 +195,13 @@ def parse_args():
 
     parser.add_argument("station", help="Station code")
     parser.add_argument("instrument", help="redline or greenline")
-    parser.add_argument("-n", "--new", action="store_true", default=False, help="Generate new file from scratch")
+#    parser.add_argument("-n", "--new", action="store_true", default=False, help="Generate new file from scratch")
 
     parser.add_argument(
-        "-c", "--config", metavar="FILE", help="Alternate configuration file"
+        "-c", "--config", metavar="FILE", help="Existing configuration file"
     )
     parser.add_argument(
-        "-sc", "--starcal", metavar="FILE", help="Alternate starcal file"
+        "-s", "--starcal", metavar="FILE", help="Starcal file"
     )
     parser.add_argument(
         "-o",
@@ -285,12 +285,12 @@ def main():
 #        time = dt.datetime.fromisoformat(args.time)
 #        starcal_file = None
 
-    # Determine configuration filename
-    if args.new:
-        # If new flag set, generate a fresh starcal file
-        logging.debug("Generating new config file")
-        config_file = None
-    elif args.config:
+#    # Determine configuration filename
+#    if args.new:
+#        # If new flag set, generate a fresh starcal file
+#        logging.debug("Generating new config file")
+#        config_file = None
+    if args.config:
         logging.debug("Alternate configuration file: %s", args.config)
         # If configuration file provided, check that it exists
         if not os.path.exists(args.config):
@@ -299,12 +299,13 @@ def main():
         logging.debug("Using provided configuration file: %s", args.config)
         config_file = args.config
     else:
-        # If no configuration file provided, find the default
-        config_file = find_config(args.station, args.instrument)
-        if not os.path.exists(config_file):
-            logging.error("No default configuration file found for %s %s!", args.station, args.instrument)
-            sys.exit(1)
-        logging.debug("Using defalt configuration file: %s", config_file)
+        config_file = None
+#        # If no configuration file provided, find the default
+#        config_file = find_config(args.station, args.instrument)
+#        if not os.path.exists(config_file):
+#            logging.error("No default configuration file found for %s %s!", args.station, args.instrument)
+#            sys.exit(1)
+#        logging.debug("Using defalt configuration file: %s", config_file)
 
 
     # Determine starcal filename

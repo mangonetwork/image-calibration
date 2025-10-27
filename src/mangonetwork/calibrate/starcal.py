@@ -255,13 +255,13 @@ def parse_args():
     parser.add_argument("-t", "--time", help="Time for star idenfication")
 
     parser.add_argument(
-        "-sc", "--starcal", metavar="FILE", help="Existing starcal file (for appending stars)"
+        "-s", "--starcal", metavar="FILE", help="Existing starcal file (for appending stars)"
     )
     parser.add_argument(
         "-o",
         "--output",
-        default="starcal-mango.txt",
-        help="Output starcal filename (default is starcal-mango.txt)",
+        default="mango-starcal.txt",
+        help="Output starcal filename (default is mango-starcal.txt)",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 

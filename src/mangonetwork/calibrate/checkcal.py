@@ -155,7 +155,7 @@ def equalize(image, contrast, num_bins=10000):
 def parse_args():
     """Command line options"""
 
-    parser = argparse.ArgumentParser(description="Calculate camera calibration")
+    parser = argparse.ArgumentParser(description="Check calibration against original starcal image")
 
     parser.add_argument("station", help="Station code")
     parser.add_argument("instrument", help="redline or greenline")
@@ -164,7 +164,7 @@ def parse_args():
         "-c", "--config", metavar="FILE", help="Alternate configuration file"
     )
     parser.add_argument(
-        "-sc", "--starcal", metavar="FILE", help="Alternate starcal file"
+        "-s", "--starcal", metavar="FILE", help="Alternate starcal file"
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
