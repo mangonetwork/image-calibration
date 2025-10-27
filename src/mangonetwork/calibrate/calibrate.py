@@ -19,6 +19,8 @@ import io
 import logging
 import os
 import sys
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 import numpy as np
 from scipy.optimize import least_squares
@@ -43,10 +45,6 @@ class Calibrate:
         """Load calibration parameters from starcal file"""
 
         # read in data from starcal file
-        #star_az, star_el, x, y = np.loadtxt(
-        #    io.StringIO(starcal_file), usecols=(1, 2, 3, 4), unpack=True
-        #)
-        #star_az, star_el, x, y = np.loadtxt(starcal_file, usecols=(1, 2, 3, 4), unpack=True)
         star_num, star_az, star_el, x, y = np.loadtxt(starcal_file, unpack=True, usecols=(1,2,3,4,5))
 
         # true x,y positions of stars
@@ -64,26 +62,41 @@ class Calibrate:
         # DEBUG: To confirm star locations match after transformation
         xt, yt = self.transform(x, y, self.x0, self.y0, self.rl,
                                   self.theta, self.A, self.B, self.C, self.D)
-        import matplotlib.pyplot as plt
         fig = plt.figure()
         ax1 = fig.add_subplot(121)
         ax2 = fig.add_subplot(122)
         cmap=plt.get_cmap('tab20')
         rp = np.sqrt((x-self.x0)**2+(y-self.y0)**2)/self.rl
         for i in range(len(star_num)):
-            sc = ax1.scatter(xp[i], yp[i], s=5, color=cmap(i%20))
-            ax1.scatter(xt[i], yt[i], facecolors='none', edgecolors=cmap(i%20))
-            ax2.scatter(star_el[i], rp[i], color=cmap(i%20), label=int(star_num[i]))
+            ax1.scatter(xp[i], yp[i], s=5, color=cmap(i%20))    # Projected true star position
+            ax1.scatter(xt[i], yt[i], facecolors='none', edgecolors=cmap(i%20)) # Transformed CCD star position
+            ax2.scatter(rp[i], star_el[i], color=cmap(i%20), label=int(star_num[i]))
         ax1.set_xlabel(r'$X/R_L$')
         ax1.set_ylabel(r'$Y/R_L$')
-        ax2.set_xlabel('Elevation (deg)')
-        ax2.set_ylabel('R')
+        ax1.set_title('Alignment of Transformed Star Position\nwith True Projected Position')
+        ax1.grid()
+
+        legend_elements = [Line2D([0], [0], marker='o', color='w', label='Projected True Position', markerfacecolor='k', markersize=5),
+                           Line2D([0], [0], marker='o', color='w', label='Transformed CCD Position', markeredgecolor='k', markersize=5)]
+        ax1.legend(handles=legend_elements, loc='upper left')
+        
+        ax2.set_xlabel('R')
+        ax2.set_ylabel('Elevation (deg)')
+        ax2.set_title('Lens Function')
+        ax2.set_xlim([0., 1.])
+        ax2.set_ylim([0., 90.])
+        ax2.grid()
         theta = np.linspace(0., 2*np.pi, 100)
         ax1.plot(np.cos(theta), np.sin(theta), color='dimgrey')
         r = np.arange(0., 1., 0.01)
         t = self.A + self.B*r + self.C*r**2 + self.D*r**3
-        ax2.plot(np.rad2deg(t), r, color='dimgrey')
-        ax2.legend()
+        ax2.plot(r, np.rad2deg(t), color='dimgrey')
+        lf_str = (f'A={np.rad2deg(self.A):.2f}\n'
+                  f'B={np.rad2deg(self.B):.2f}\n'
+                  f'C={np.rad2deg(self.C):.2f}\n'
+                  f'D={np.rad2deg(self.D):.2f}')
+        ax2.text(0.98, 0.98, lf_str, ha='right', va='top', transform=ax2.transAxes)
+        ax2.legend(loc='center left', bbox_to_anchor=(1.01,0.5), fontsize='x-small')
         plt.show()
 
     # pylint: disable=too-many-arguments, too-many-locals
@@ -156,7 +169,6 @@ class Calibrate:
 
         # If a real filename is provide for a config file, read it in
         if config_file:
-            #config.read_string(config_file)
             config.read(config_file)
 
         config["CALIBRATION_PARAMS"] = dict(
@@ -169,15 +181,6 @@ class Calibrate:
                 c = str(self.C),
                 d = str(self.D))
 
-
-#        config.set("CALIBRATION_PARAMS", "X0", str(self.x0))
-#        config.set("CALIBRATION_PARAMS", "Y0", str(self.y0))
-#        config.set("CALIBRATION_PARAMS", "RL", str(self.rl))
-#        config.set("CALIBRATION_PARAMS", "THETA", str(self.theta))
-#        config.set("CALIBRATION_PARAMS", "A", str(self.A))
-#        config.set("CALIBRATION_PARAMS", "B", str(self.B))
-#        config.set("CALIBRATION_PARAMS", "C", str(self.C))
-#        config.set("CALIBRATION_PARAMS", "D", str(self.D))
 
         with open(output, "w", encoding="utf-8") as cf:
             config.write(cf)
@@ -195,7 +198,6 @@ def parse_args():
 
     parser.add_argument("station", help="Station code")
     parser.add_argument("instrument", help="redline or greenline")
-#    parser.add_argument("-n", "--new", action="store_true", default=False, help="Generate new file from scratch")
 
     parser.add_argument(
         "-c", "--config", metavar="FILE", help="Existing configuration file"
@@ -256,40 +258,6 @@ def main():
     else:
         logging.basicConfig(format=fmt, level=logging.INFO)
 
-#    if args.config:
-#        logging.debug("Alternate configuration file: %s", args.config)
-#        if not os.path.exists(args.config):
-#            logging.error("Config file not found")
-#            sys.exit(1)
-#        with open(args.config, encoding="utf-8") as f:
-#            config_contents = f.read()
-#    else:
-#        config_contents = find_config(args.station, args.instrument)
-
-#    if args.starcal:
-#        logging.debug("Alternate starcal file: %s", args.starcal)
-#        if not os.path.exists(args.starcal):
-#            logging.error("StarCal file not found")
-#            sys.exit(1)
-#        with open(args.starcal, encoding="utf-8") as f:
-#            starcal_contents = f.read()
-#    else:
-#        starcal_contents = find_starcal(args.station, args.instrument)
-#
-#
-#    if args.new:
-#        # If new flag set, generate a fresh starcal file
-#        logging.debug("Generating new starcal file")
-#        station = args.station
-#        instrument = args.instrument
-#        time = dt.datetime.fromisoformat(args.time)
-#        starcal_file = None
-
-#    # Determine configuration filename
-#    if args.new:
-#        # If new flag set, generate a fresh starcal file
-#        logging.debug("Generating new config file")
-#        config_file = None
     if args.config:
         logging.debug("Alternate configuration file: %s", args.config)
         # If configuration file provided, check that it exists
@@ -300,13 +268,6 @@ def main():
         config_file = args.config
     else:
         config_file = None
-#        # If no configuration file provided, find the default
-#        config_file = find_config(args.station, args.instrument)
-#        if not os.path.exists(config_file):
-#            logging.error("No default configuration file found for %s %s!", args.station, args.instrument)
-#            sys.exit(1)
-#        logging.debug("Using defalt configuration file: %s", config_file)
-
 
     # Determine starcal filename
     if args.starcal:
@@ -326,8 +287,6 @@ def main():
         logging.debug("Using defalt starcal file: %s", starcal_file)
 
 
-
-    #Calibrate(config_contents, starcal_contents, args.output)
     Calibrate(starcal_file, args.output, config=config_file)
 
     sys.exit(0)
