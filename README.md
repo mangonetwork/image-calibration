@@ -33,7 +33,7 @@ This will load the default starcal file for this station and instrument and allo
 
 #### Create a new file from scratch
 ```
-mango=starcal <station> <instrument> -n -t <YYYY-MM-DDTHH:MM:SS>
+mango-starcal <station> <instrument> -n -t <YYYY-MM-DDTHH:MM:SS>
 ```
 This will create a new starcal file for this station and instrument using the time (ISO format) specifed in the `-t` flag.
 
@@ -105,12 +105,13 @@ This will open a matplotlib window with the raw image you selected.  DO NOT clos
 mango-calibrate <site> <instrument> -s starcal-<site>-<instrument>.txt -o <site>-<instrument>.ini
 ```
 This should pop up a window showing how the stars match the fitted rotation and lens function.  As long as nothing looks wierd, you can close this window and the output file will be created.  This is an \*.ini file that only includes the `CALIBRATION_PARAMS` section.
+
 9. Run `mango-checkcal` to confirm the calibration parameters transforms make sense on the original image.
 10. Move the newly createcd starcal and config files to your default config file directory.  You should add the `SITE_INFO`, `PROCESSING`, and `QUICKLOOK` fields to the config file so it can be used for processing data.  Alternatively, if you have a prior config file with these sections, you can specify it with the `-c` flag in step 8 and they will automatically be copied.
 
 **Notes:**
-- This program ONLY works with stars, not planets, moons or other objects.  Based on the HIP catelog.
-- Stellarium appends the HIP number of some stars with alphebetical characters, usually indicating a binary star system.  In these cases, just enter the numerical digits.
+- These programs are based off the [Hipparcos catolog](https://www.cosmos.esa.int/web/hipparcos/catalogues) and ONLY work with stars, not planets, moons or other objects.
+- Stellarium appends the HIP number of some stars with alphabetical characters, usually indicating a binary star system.  Only enter the numerical digits associated with each star at the command line when running `mango-starcal`.
 - If the figure that `mango-calibrate` pops up has a star that is wildly out of place, manually edit the starcal file and delete that line.  These can offset the fit and result in bad calibration.
 - You can create a new starcal file starting with the image and stars in an existing starcal file by specifying the existing file with the `-s` flag.  This is useful if you saved a starcal file midway through working on it, or realize you need to add more stars to improve the fit.
 ```
