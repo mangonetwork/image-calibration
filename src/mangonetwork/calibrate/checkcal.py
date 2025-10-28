@@ -10,6 +10,7 @@ import datetime as dt
 import requests
 import h5py
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
@@ -25,6 +26,9 @@ class Check:
         self.config.read(config_file)
 
         self.station, self.instrument, self.time = self.read_header(starcal_file)
+
+        # read in data from starcal file
+        self.star_num, self.star_az, self.star_el, self.x, self.y = np.loadtxt(starcal_file, unpack=True, usecols=(1,2,3,4,5))
 
         self.run()
 
@@ -94,27 +98,45 @@ class Check:
 
     def display(self, image):
         # Display image with stars
-        self.fig, self.ax = plt.subplots()
+        fig, ax = plt.subplots()
         # Display image
-        self.ax.imshow(image, cmap='gray')
+        ax.imshow(image, cmap='gray')
 
-        self.ax.scatter(self.x0, self.y0, edgecolor='gold', facecolor='none', label='zenith')
+        # Plot Zenith
+        ax.scatter(self.x0, self.y0, s=50, color='red', marker='P', label='zenith')
+
+        # Generate lense function arrays for interpretation
         t = np.linspace(0., 2*np.pi, 100)
-        #self.ax.scatter(self.rl*np.cos(t)+self.x0, self.rl*np.sin(t)+self.y0, edgecolor='gold', facecolor='none', label='zenith')
-
         r = np.linspace(0., 1., 100)
         lam = np.rad2deg(self.A + self.B * r + self.C * r**2 + self.D * r**3)
-        for el in [0., 15., 30., 60.]:
+
+        # Set Up color maps
+        cmap = mpl.colormaps['rainbow']
+        norm = mpl.colors.Normalize(vmin=0., vmax=90.)
+        cmap2 = mpl.colormaps['twilight']
+        norm2 = mpl.colors.Normalize(0., 360.)
+
+        # Plot elevation circles
+        for el in [0., 15., 30., 45., 60., 75.]:
             r0 = np.interp(el, lam[::-1], r[::-1])
-            self.ax.plot(r0*self.rl*np.cos(t)+self.x0, r0*self.rl*np.sin(t)+self.y0, label=f'el={el}')
+            ax.plot(r0*self.rl*np.cos(t)+self.x0, r0*self.rl*np.sin(t)+self.y0, color=cmap(el/90.), label=f'el={el}')
 
-        self.ax.plot([self.x0, self.x0+self.rl*np.sin(np.deg2rad(self.theta))], [self.y0, self.y0+self.rl*np.cos(np.deg2rad(self.theta))], color='k', linestyle=':', label='N')
+        # Plot North Line
+        ax.plot([self.x0, self.x0+self.rl*np.sin(np.deg2rad(self.theta))], [self.y0, self.y0+self.rl*np.cos(np.deg2rad(self.theta))], color='k', linestyle=':', label='North')
 
+        # Plot Polaris
         r0 = np.interp(self.site_lat, lam[::-1], r[::-1])
         r0 = r0*self.rl
-        self.ax.scatter(self.x0+r0*np.sin(np.deg2rad(self.theta)), self.y0+r0*np.cos(np.deg2rad(self.theta)), edgecolor='magenta', facecolor='none', label='Polaris')
+        ax.scatter(self.x0+r0*np.sin(np.deg2rad(self.theta)), self.y0+r0*np.cos(np.deg2rad(self.theta)), s=50, color='magenta', marker='*', label='Polaris')
 
-        self.ax.legend()
+        # Add colorbars
+        c = ax.scatter(self.x, self.y, facecolor=cmap2(self.star_az/360.), edgecolor=cmap(self.star_el/90.))
+        cax = fig.add_axes([0.8, 0.1, 0.02, 0.8])
+        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, label='Elevation - Edge (deg)')
+        cax = fig.add_axes([0.9, 0.1, 0.02, 0.8])
+        fig.colorbar(mpl.cm.ScalarMappable(norm=norm2, cmap=cmap2), cax=cax, label='Azimuth - Face (deg)')
+        # Add legend
+        ax.legend()
 
         plt.show()
 
@@ -213,55 +235,22 @@ def main():
     else:
         logging.basicConfig(format=fmt, level=logging.INFO)
 
-#    if args.config:
-#        logging.debug("Alternate configuration file: %s", args.config)
-#        if not os.path.exists(args.config):
-#            logging.error("Config file not found")
-#            sys.exit(1)
-#        with open(args.config, encoding="utf-8") as f:
-#            config_contents = f.read()
-#    else:
-#        config_contents = find_config(args.station, args.instrument)
-
-#    if args.starcal:
-#        logging.debug("Alternate starcal file: %s", args.starcal)
-#        if not os.path.exists(args.starcal):
-#            logging.error("StarCal file not found")
-#            sys.exit(1)
-#        with open(args.starcal, encoding="utf-8") as f:
-#            starcal_contents = f.read()
-#    else:
-#        starcal_contents = find_starcal(args.station, args.instrument)
-#
-#
-#    if args.new:
-#        # If new flag set, generate a fresh starcal file
-#        logging.debug("Generating new starcal file")
-#        station = args.station
-#        instrument = args.instrument
-#        time = dt.datetime.fromisoformat(args.time)
-#        starcal_file = None
-
-#    # Determine configuration filename
-#    if args.new:
-#        # If new flag set, generate a fresh starcal file
-#        logging.debug("Generating new config file")
-#        config_file = None
-#    elif args.config:
-#        logging.debug("Alternate configuration file: %s", args.config)
-#        # If configuration file provided, check that it exists
-#        if not os.path.exists(args.config):
-#            logging.error("Configurationl file not found")
-#            sys.exit(1)
-#        logging.debug("Using provided configuration file: %s", args.config)
-#        config_file = args.config
-#    else:
-    # If no configuration file provided, find the default
-    config_file = find_config(args.station, args.instrument)
-    if not os.path.exists(config_file):
-        logging.error("No default configuration file found for %s %s!", args.station, args.instrument)
-        sys.exit(1)
-    logging.debug("Using defalt configuration file: %s", config_file)
+    # Determine config filename
+    if args.config:
+        logging.debug("Alternate configuration file: %s", args.config)
+        # If configuration file provided, check that it exists
+        if not os.path.exists(args.config):
+            logging.error("Configurationl file not found")
+            sys.exit(1)
+        logging.debug("Using provided configuration file: %s", args.config)
+        config_file = args.config
+    else:
+        # If no configuration file provided, find the default
+        config_file = find_config(args.station, args.instrument)
+        if not os.path.exists(config_file):
+            logging.error("No default configuration file found for %s %s!", args.station, args.instrument)
+            sys.exit(1)
+        logging.debug("Using defalt configuration file: %s", config_file)
 
 
     # Determine starcal filename
