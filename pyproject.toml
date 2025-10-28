@@ -45,7 +45,7 @@ devel = [
 
 [project.urls]
 homepage="https://www.mangonetwork.org"
-repository="https://github.com/mangonetwork/raw-image-processing"
+repository="https://github.com/mangonetwork/image-calibration"
 
 [project.scripts]
     mango-calibrate = "mangonetwork.calibrate.calibrate:main"
