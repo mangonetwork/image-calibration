@@ -195,7 +195,7 @@ class StarCal:
             # write header
             f.write(f'# {self.site_station.upper()}    {self.site_instrument}\n')
             f.write(f'# {self.time.isoformat()}\n')
-            f.write(f'# GLAT={self.site_lat:10.6f}    GLON={self.site_lon:10.6f}\n')
+            f.write(f'# GLAT={self.site_lat:12.6f}    GLON={self.site_lon:12.6f}\n')
             f.write(80*'#'+'\n\n')
             f.write(f'# {"Name":<20}{"HIP":>8}{"Azimuth":>15}{"Elevation":>15}{"X":>10}{"Y":>10}\n')
 
