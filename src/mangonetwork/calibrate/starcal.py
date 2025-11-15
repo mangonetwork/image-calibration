@@ -187,7 +187,6 @@ class StarCal:
             print('Elevation: ', elev.degrees, azel[1], elev.degrees-azel[1])
 
 
-
     def save_starcal_file(self, output):
         """ Save output starcal file"""
 

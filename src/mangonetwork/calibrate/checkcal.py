@@ -96,7 +96,20 @@ class Check:
         self.D = self.config.getfloat("CALIBRATION_PARAMS", "D")
 
 
+    def elev2r(self, elev):
+
+        el = np.deg2rad(elev)
+
+        Delta0 = self.C**2 - 3 * self.D * self.B
+        Delta1 = 2 * self.C**3 - 9 * self.D * self.C * self.B + 27 * self.D**2 * (self.A-el)
+        Gamma = ((Delta1 + np.sqrt(Delta1**2 - 4 * Delta0**3)) / 2)**(1./3.)
+        r = -(self.C + Gamma + Delta0/Gamma)/(3 * self.D)
+
+        return r
+
+
     def display(self, image):
+
         # Display image with stars
         fig, ax = plt.subplots()
         # Display image
@@ -117,17 +130,22 @@ class Check:
         norm2 = mpl.colors.Normalize(0., 360.)
 
         # Plot elevation circles
-        for el in [0., 15., 30., 45., 60., 75.]:
-            r0 = np.interp(el, lam[::-1], r[::-1])
-            ax.plot(r0*self.rl*np.cos(t)+self.x0, r0*self.rl*np.sin(t)+self.y0, color=cmap(el/90.), label=f'el={el}')
+        t = np.linspace(0., 2*np.pi, 100)
+        el0 = [0., 15., 30., 45., 60., 75.]
+        r0 = self.elev2r(el0)
+        for r, el in zip(r0, el0):
+            x = r * self.rl * np.cos(t) + self.x0
+            y = r * self.rl * np.sin(t) + self.y0
+            ax.plot(x, y, color=cmap(el/90.), label=f'el={el}')
 
         # Plot North Line
         ax.plot([self.x0, self.x0+self.rl*np.sin(np.deg2rad(self.theta))], [self.y0, self.y0+self.rl*np.cos(np.deg2rad(self.theta))], color='k', linestyle=':', label='North')
 
         # Plot Polaris
-        r0 = np.interp(self.site_lat, lam[::-1], r[::-1])
-        r0 = r0*self.rl
-        ax.scatter(self.x0+r0*np.sin(np.deg2rad(self.theta)), self.y0+r0*np.cos(np.deg2rad(self.theta)), s=50, color='magenta', marker='*', label='Polaris')
+        r0 = self.elev2r(self.site_lat)
+        x = r0 * self.rl * np.sin(np.deg2rad(self.theta)) + self.x0
+        y = r0 * self.rl * np.sin(np.deg2rad(self.theta)) + self.y0
+        ax.scatter(x, y, s=50, color='magenta', marker='*', label='Polaris')
 
         # Add colorbars
         c = ax.scatter(self.x, self.y, facecolor=cmap2(self.star_az/360.), edgecolor=cmap(self.star_el/90.))
