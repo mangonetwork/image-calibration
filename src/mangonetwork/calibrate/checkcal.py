@@ -139,12 +139,14 @@ class Check:
             ax.plot(x, y, color=cmap(el/90.), label=f'el={el}')
 
         # Plot North Line
-        ax.plot([self.x0, self.x0+self.rl*np.sin(np.deg2rad(self.theta))], [self.y0, self.y0+self.rl*np.cos(np.deg2rad(self.theta))], color='k', linestyle=':', label='North')
+        x1 = self.rl * np.sin(np.deg2rad(self.theta)) + self.x0
+        y1 = self.rl * np.cos(np.deg2rad(self.theta)) + self.y0
+        ax.plot([self.x0, x1], [self.y0, y1], color='k', linestyle=':', label='North')
 
         # Plot Polaris
         r0 = self.elev2r(self.site_lat)
         x = r0 * self.rl * np.sin(np.deg2rad(self.theta)) + self.x0
-        y = r0 * self.rl * np.sin(np.deg2rad(self.theta)) + self.y0
+        y = r0 * self.rl * np.cos(np.deg2rad(self.theta)) + self.y0
         ax.scatter(x, y, s=50, color='magenta', marker='*', label='Polaris')
 
         # Add colorbars
