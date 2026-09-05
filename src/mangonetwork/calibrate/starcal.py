@@ -24,18 +24,19 @@ import requests
 import h5py
 import numpy as np
 
-# Workaround due to bug in matplotlib event handling interface
-# https://github.com/matplotlib/matplotlib/issues/30419
-import matplotlib
-if matplotlib.get_backend() == 'macosx':
-    matplotlib.use('tkagg')
-import matplotlib.pyplot as plt
-
-from skyfield.api import Star, load, wgs84
-from skyfield.data import hipparcos
-from skyfield.named_stars import named_star_dict
+## Workaround due to bug in matplotlib event handling interface
+## https://github.com/matplotlib/matplotlib/issues/30419
+#import matplotlib
+#if matplotlib.get_backend() == 'macosx':
+#    matplotlib.use('tkagg')
+#import matplotlib.pyplot as plt
+#
+#from skyfield.api import Star, load, wgs84
+#from skyfield.data import hipparcos
+#from skyfield.named_stars import named_star_dict
 
 from asistarcalibration.starfinder import StarFinder
+from asistarcalibration.wizard import equalize
 
 
 #if sys.version_info < (3, 9):
@@ -216,13 +217,13 @@ def load_image(raw_file):
     time = dt.datetime.utcfromtimestamp(image.attrs['start_time'])
     site_lat = image.attrs['latitude']
     site_lon = image.attrs['longitude']
-    site_station = image.attrs['station']
-    site_instrument = image.attrs['instrument']
+    #site_station = image.attrs['station']
+    #site_instrument = image.attrs['instrument']
 
-    return cooked_image, time, site_lat, site_lon, site_station, site_instrument
+    return cooked_image, time, site_lat, site_lon
 
 
-def prep_image(image, contrast=99.95, rotation_angle=0.):
+def prep_image(image, contrast=99., rotation_angle=0.):
     """Prepare image to display"""
 
     cooked_image = np.array(image)
@@ -231,33 +232,33 @@ def prep_image(image, contrast=99.95, rotation_angle=0.):
     return cooked_image
 
 
-def equalize(image, contrast, num_bins=10000):
-    """Histogram Equalization to adjust contrast [1%-99%]"""
-    # copied function from imageops.py
-    # needed to make the image visable - there may be more efficient ways of doing this
-
-    image_array_1d = image.flatten()
-
-    image_histogram, bins = np.histogram(image_array_1d, num_bins)
-    image_histogram = image_histogram[1:]
-    bins = bins[1:]
-    cdf = np.cumsum(image_histogram)
-
-    # spliced to cut off non-image area
-    # any way to determine this dynamically?  How periminant is it?
-    cdf = cdf[:9996]
-
-    max_cdf = max(cdf)
-    max_index = np.argmin(abs(cdf - contrast / 100 * max_cdf))
-    min_index = np.argmin(abs(cdf - (100 - contrast) / 100 * max_cdf))
-    vmax = float(bins[max_index])
-    vmin = float(bins[min_index])
-    low_value_indices = image_array_1d < vmin
-    image_array_1d[low_value_indices] = vmin
-    high_value_indices = image_array_1d > vmax
-    image_array_1d[high_value_indices] = vmax
-
-    return image_array_1d.reshape(image.shape)
+#def equalize(image, contrast, num_bins=10000):
+#    """Histogram Equalization to adjust contrast [1%-99%]"""
+#    # copied function from imageops.py
+#    # needed to make the image visable - there may be more efficient ways of doing this
+#
+#    image_array_1d = image.flatten()
+#
+#    image_histogram, bins = np.histogram(image_array_1d, num_bins)
+#    image_histogram = image_histogram[1:]
+#    bins = bins[1:]
+#    cdf = np.cumsum(image_histogram)
+#
+#    # spliced to cut off non-image area
+#    # any way to determine this dynamically?  How periminant is it?
+#    cdf = cdf[:9996]
+#
+#    max_cdf = max(cdf)
+#    max_index = np.argmin(abs(cdf - contrast / 100 * max_cdf))
+#    min_index = np.argmin(abs(cdf - (100 - contrast) / 100 * max_cdf))
+#    vmax = float(bins[max_index])
+#    vmin = float(bins[min_index])
+#    low_value_indices = image_array_1d < vmin
+#    image_array_1d[low_value_indices] = vmin
+#    high_value_indices = image_array_1d > vmax
+#    image_array_1d[high_value_indices] = vmax
+#
+#    return image_array_1d.reshape(image.shape)
 
 
 
@@ -374,9 +375,10 @@ def main():
     # Run star calibration
     #StarCal(image_filename, args.output, sc_file=starcal_file)
 
-    img, time, site_lat, site_lon, site_station, site_instrument = load_image(image_filename)
+    # Load image and retrieve actual time and site coordinates
+    img, truetime, site_lat, site_lon = load_image(image_filename)
 
-    find = StarFinder(site_lat, site_lon, time)
+    find = StarFinder(site_lat, site_lon, truetime, station=station, instrument=instrument)
     find.find_stars(img)
     find.save_starcal_file(args.output)
 
