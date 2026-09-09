@@ -17,115 +17,119 @@ import matplotlib.pyplot as plt
 from asistarcalibration.starcal import StarCal
 from asistarcalibration.wizard import equalize
 
-class Check:
-    """check calibration on starcal image"""
+#class Check:
+#    """check calibration on starcal image"""
 
-    def __init__(self, starcal_file, config_file):
+def run_checkcal(starcal_file, config_file):
 
-        self.starcal_file = starcal_file
-        self.config_file = config_file
+#    self.starcal_file = starcal_file
+#    self.config_file = config_file
 
-        self.config = configparser.ConfigParser()
-        self.config.read(config_file)
+    config = configparser.ConfigParser()
+    config.read(config_file)
 
-        self.station, self.instrument, self.time = self.read_header(starcal_file)
+    station, instrument, time = read_header(starcal_file)
 
-        # read in data from starcal file
-        #self.star_num, self.star_az, self.star_el, self.x, self.y = np.loadtxt(starcal_file, unpack=True, usecols=(1,2,3,4,5))
-
-        self.run()
-
-    def run(self):
-
-        image_file = self.download_image(self.station, self.instrument, self.time)
-        image = self.load_image(image_file)
-        cooked_image = self.prep_image(image)
-        self.load_calibration_params()
-        self.display2(cooked_image)
-
-    def read_header(self, starcal_file):
-        """Read header from starcal file"""
-    
-        with open(starcal_file, 'r') as f:
-            line1 = f.readline()
-            _, station, instrument = line1.split()
-            line2 = f.readline()
-            time = dt.datetime.fromisoformat(line2.split()[1])
-    
-        return station, instrument, time
-
-    def download_image(self, station, instrument, time):
-        """Download image for star matching"""
-    
-        url = f'https://data.mangonetwork.org/data/transport/mango/archive/{station.lower()}/{instrument}/raw/{time:%Y}/{time:%j}/{time:%H}/mango-{station.lower()}-{instrument}-{time:%Y%m%d-%H%M%S}.hdf5'
-        logging.debug("Downloading raw image file: %s", url)
-        r=requests.get(url)
-        open('mango_image.hdf5', 'wb').write(r.content)
-    
-        return 'mango_image.hdf5'
-
-    def load_image(self, raw_file):
-        """Load image and metadata from raw file"""
-
-        image = h5py.File(raw_file, 'r')['image']
-        cooked_image = self.prep_image(image)
-
-        self.time = dt.datetime.utcfromtimestamp(image.attrs['start_time'])
-        self.site_lat = image.attrs['latitude']
-        self.site_lon = image.attrs['longitude']
-        self.site_station = image.attrs['station']
-        self.site_instrument = image.attrs['instrument']
-
-        return cooked_image
-
-    def prep_image(self, image, contrast=99.95, rotation_angle=0.):
-        """Prepare image to display"""
-
-        cooked_image = np.array(image)
-        cooked_image = equalize(cooked_image, contrast)
-
-        return cooked_image
-
-    def load_calibration_params(self):
-
-        self.x0 = self.config.getfloat("CALIBRATION_PARAMS", "X0")
-        self.y0 = self.config.getfloat("CALIBRATION_PARAMS", "Y0")
-        self.rl = self.config.getfloat("CALIBRATION_PARAMS", "RL")
-        self.theta = self.config.getfloat("CALIBRATION_PARAMS", "THETA")
-
-        self.A = self.config.getfloat("CALIBRATION_PARAMS", "A")
-        self.B = self.config.getfloat("CALIBRATION_PARAMS", "B")
-        self.C = self.config.getfloat("CALIBRATION_PARAMS", "C")
-        self.D = self.config.getfloat("CALIBRATION_PARAMS", "D")
+    # read in data from starcal file
+    #self.star_num, self.star_az, self.star_el, self.x, self.y = np.loadtxt(starcal_file, unpack=True, usecols=(1,2,3,4,5))
 
 
-    def elev2r(self, elev):
-
-        el = np.deg2rad(elev)
-
-        Delta0 = self.C**2 - 3 * self.D * self.B
-        Delta1 = 2 * self.C**3 - 9 * self.D * self.C * self.B + 27 * self.D**2 * (self.A-el)
-        Gamma = ((Delta1 + np.sqrt(Delta1**2 - 4 * Delta0**3)) / 2)**(1./3.)
-        r = -(self.C + Gamma + Delta0/Gamma)/(3 * self.D)
-
-        return r
+    image_file = download_image(station, instrument, time)
+    image, site_lat = load_image(image_file)
+    cooked_image = prep_image(image)
 
 
-    def display2(self, image):
-        
-        sc = StarCal(self.starcal_file)
+    sc = StarCal(starcal_file)
 
-        sc.x0 = self.config.getfloat("CALIBRATION_PARAMS", "X0")
-        sc.y0 = self.config.getfloat("CALIBRATION_PARAMS", "Y0")
-        sc.rl = self.config.getfloat("CALIBRATION_PARAMS", "RL")
-        sc.theta = self.config.getfloat("CALIBRATION_PARAMS", "THETA")
+    load_calibration_params(sc, config)
 
-        sc.A = self.config.getfloat("CALIBRATION_PARAMS", "A")
-        sc.B = self.config.getfloat("CALIBRATION_PARAMS", "B")
-        sc.C = self.config.getfloat("CALIBRATION_PARAMS", "C")
-        sc.D = self.config.getfloat("CALIBRATION_PARAMS", "D")
+    sc.checkcal(image, site_lat)
 
-        sc.checkcal(image, self.site_lat)
+    #self.display2(cooked_image)
+
+def read_header(starcal_file):
+    """Read header from starcal file"""
+
+    with open(starcal_file, 'r') as f:
+        line1 = f.readline()
+        _, station, instrument = line1.split()
+        line2 = f.readline()
+        time = dt.datetime.fromisoformat(line2.split()[1])
+
+    return station, instrument, time
+
+def download_image(station, instrument, time):
+    """Download image for star matching"""
+
+    url = f'https://data.mangonetwork.org/data/transport/mango/archive/{station.lower()}/{instrument}/raw/{time:%Y}/{time:%j}/{time:%H}/mango-{station.lower()}-{instrument}-{time:%Y%m%d-%H%M%S}.hdf5'
+    logging.debug("Downloading raw image file: %s", url)
+    r=requests.get(url)
+    open('mango_image.hdf5', 'wb').write(r.content)
+
+    return 'mango_image.hdf5'
+
+def load_image(raw_file):
+    """Load image and metadata from raw file"""
+
+    image = h5py.File(raw_file, 'r')['image']
+    cooked_image = prep_image(image)
+
+    time = dt.datetime.utcfromtimestamp(image.attrs['start_time'])
+    site_lat = image.attrs['latitude']
+    site_lon = image.attrs['longitude']
+    site_station = image.attrs['station']
+    site_instrument = image.attrs['instrument']
+
+    return cooked_image, site_lat
+
+def prep_image(image, contrast=99, rotation_angle=0.):
+    """Prepare image to display"""
+
+    cooked_image = np.array(image)
+    cooked_image = equalize(cooked_image, contrast)
+
+    return cooked_image
+
+def load_calibration_params(sc, config):
+
+    sc.x0 = config.getfloat("CALIBRATION_PARAMS", "X0")
+    sc.y0 = config.getfloat("CALIBRATION_PARAMS", "Y0")
+    sc.rl = config.getfloat("CALIBRATION_PARAMS", "RL")
+    sc.theta = config.getfloat("CALIBRATION_PARAMS", "THETA")
+
+    sc.A = config.getfloat("CALIBRATION_PARAMS", "A")
+    sc.B = config.getfloat("CALIBRATION_PARAMS", "B")
+    sc.C = config.getfloat("CALIBRATION_PARAMS", "C")
+    sc.D = config.getfloat("CALIBRATION_PARAMS", "D")
+
+
+#def elev2r(self, elev):
+#
+#    el = np.deg2rad(elev)
+#
+#    Delta0 = self.C**2 - 3 * self.D * self.B
+#    Delta1 = 2 * self.C**3 - 9 * self.D * self.C * self.B + 27 * self.D**2 * (self.A-el)
+#    Gamma = ((Delta1 + np.sqrt(Delta1**2 - 4 * Delta0**3)) / 2)**(1./3.)
+#    r = -(self.C + Gamma + Delta0/Gamma)/(3 * self.D)
+#
+#    return r
+
+
+#def display2(self, image):
+#    
+#    sc = StarCal(self.starcal_file)
+#
+#    sc.x0 = self.config.getfloat("CALIBRATION_PARAMS", "X0")
+#    sc.y0 = self.config.getfloat("CALIBRATION_PARAMS", "Y0")
+#    sc.rl = self.config.getfloat("CALIBRATION_PARAMS", "RL")
+#    sc.theta = self.config.getfloat("CALIBRATION_PARAMS", "THETA")
+#
+#    sc.A = self.config.getfloat("CALIBRATION_PARAMS", "A")
+#    sc.B = self.config.getfloat("CALIBRATION_PARAMS", "B")
+#    sc.C = self.config.getfloat("CALIBRATION_PARAMS", "C")
+#    sc.D = self.config.getfloat("CALIBRATION_PARAMS", "D")
+#
+#    sc.checkcal(image, self.site_lat)
         
 #    def display(self, image):
 #
@@ -310,7 +314,7 @@ def main():
         logging.debug("Using defalt starcal file: %s", starcal_file)
 
 
-    Check(starcal_file, config_file)
+    run_checkcal(starcal_file, config_file)
 
     sys.exit(0)
 
