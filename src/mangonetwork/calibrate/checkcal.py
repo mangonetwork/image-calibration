@@ -10,8 +10,8 @@ import datetime as dt
 import requests
 import h5py
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+#import matplotlib as mpl
+#import matplotlib.pyplot as plt
 
 #from asistarcalibration.starfinder import StarFinder
 from asistarcalibration.starcal import StarCal

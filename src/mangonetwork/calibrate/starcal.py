@@ -379,6 +379,7 @@ def main():
     img, truetime, site_lat, site_lon = load_image(image_filename)
 
     find = StarFinder(site_lat, site_lon, truetime, station=station, instrument=instrument)
+    find.load_stars(starcal_file)
     find.find_stars(img)
     find.save_starcal_file(args.output)
 

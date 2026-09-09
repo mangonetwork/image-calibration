@@ -19,12 +19,12 @@ import io
 import logging
 import os
 import sys
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
+#import matplotlib.pyplot as plt
+#from matplotlib.lines import Line2D
 
-import numpy as np
-from scipy.optimize import least_squares
-from scipy.spatial.transform import Rotation
+#import numpy as np
+#from scipy.optimize import least_squares
+#from scipy.spatial.transform import Rotation
 
 #if sys.version_info < (3, 9):
 #    import importlib_resources as resources
@@ -291,6 +291,7 @@ def main():
 
     #Calibrate(starcal_file, args.output, config=config_file)
 
+    print(starcal_file)
     cal = StarCal(starcal_file)
     cal.calculate_calibration_params(695, 519)
     save_calibration_params(cal, args.output, config_file)
