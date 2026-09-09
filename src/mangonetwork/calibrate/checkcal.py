@@ -10,30 +10,21 @@ import datetime as dt
 import requests
 import h5py
 import numpy as np
-#import matplotlib as mpl
-#import matplotlib.pyplot as plt
 
-#from asistarcalibration.starfinder import StarFinder
 from asistarcalibration.starcal import StarCal
 from asistarcalibration.wizard import equalize
 
-#class Check:
-#    """check calibration on starcal image"""
 
 def run_checkcal(starcal_file, config_file):
 
-#    self.starcal_file = starcal_file
-#    self.config_file = config_file
-
+    # Load config file
     config = configparser.ConfigParser()
     config.read(config_file)
 
+    # Read header information from starcal file
     station, instrument, time = read_header(starcal_file)
 
-    # read in data from starcal file
-    #self.star_num, self.star_az, self.star_el, self.x, self.y = np.loadtxt(starcal_file, unpack=True, usecols=(1,2,3,4,5))
-
-
+    # prepare image
     image_file = download_image(station, instrument, time)
     image, site_lat = load_image(image_file)
     cooked_image = prep_image(image)
@@ -45,7 +36,6 @@ def run_checkcal(starcal_file, config_file):
 
     sc.checkcal(image, site_lat)
 
-    #self.display2(cooked_image)
 
 def read_header(starcal_file):
     """Read header from starcal file"""
@@ -102,116 +92,6 @@ def load_calibration_params(sc, config):
     sc.C = config.getfloat("CALIBRATION_PARAMS", "C")
     sc.D = config.getfloat("CALIBRATION_PARAMS", "D")
 
-
-#def elev2r(self, elev):
-#
-#    el = np.deg2rad(elev)
-#
-#    Delta0 = self.C**2 - 3 * self.D * self.B
-#    Delta1 = 2 * self.C**3 - 9 * self.D * self.C * self.B + 27 * self.D**2 * (self.A-el)
-#    Gamma = ((Delta1 + np.sqrt(Delta1**2 - 4 * Delta0**3)) / 2)**(1./3.)
-#    r = -(self.C + Gamma + Delta0/Gamma)/(3 * self.D)
-#
-#    return r
-
-
-#def display2(self, image):
-#    
-#    sc = StarCal(self.starcal_file)
-#
-#    sc.x0 = self.config.getfloat("CALIBRATION_PARAMS", "X0")
-#    sc.y0 = self.config.getfloat("CALIBRATION_PARAMS", "Y0")
-#    sc.rl = self.config.getfloat("CALIBRATION_PARAMS", "RL")
-#    sc.theta = self.config.getfloat("CALIBRATION_PARAMS", "THETA")
-#
-#    sc.A = self.config.getfloat("CALIBRATION_PARAMS", "A")
-#    sc.B = self.config.getfloat("CALIBRATION_PARAMS", "B")
-#    sc.C = self.config.getfloat("CALIBRATION_PARAMS", "C")
-#    sc.D = self.config.getfloat("CALIBRATION_PARAMS", "D")
-#
-#    sc.checkcal(image, self.site_lat)
-        
-#    def display(self, image):
-#
-#        # Display image with stars
-#        fig, ax = plt.subplots()
-#        # Display image
-#        ax.imshow(image, cmap='gray')
-#
-#        # Plot Zenith
-#        ax.scatter(self.x0, self.y0, s=50, color='red', marker='P', label='zenith')
-#
-#        # Generate lense function arrays for interpretation
-#        t = np.linspace(0., 2*np.pi, 100)
-#        r = np.linspace(0., 1., 100)
-#        lam = np.rad2deg(self.A + self.B * r + self.C * r**2 + self.D * r**3)
-#
-#        # Set Up color maps
-#        cmap = mpl.colormaps['rainbow']
-#        norm = mpl.colors.Normalize(vmin=0., vmax=90.)
-#        cmap2 = mpl.colormaps['twilight']
-#        norm2 = mpl.colors.Normalize(0., 360.)
-#
-#        # Plot elevation circles
-#        t = np.linspace(0., 2*np.pi, 100)
-#        el0 = [0., 15., 30., 45., 60., 75.]
-#        r0 = self.elev2r(el0)
-#        for r, el in zip(r0, el0):
-#            x = r * self.rl * np.cos(t) + self.x0
-#            y = r * self.rl * np.sin(t) + self.y0
-#            ax.plot(x, y, color=cmap(el/90.), label=f'el={el}')
-#
-#        # Plot North Line
-#        x1 = self.rl * np.sin(np.deg2rad(self.theta)) + self.x0
-#        y1 = self.rl * np.cos(np.deg2rad(self.theta)) + self.y0
-#        ax.plot([self.x0, x1], [self.y0, y1], color='k', linestyle=':', label='North')
-#
-#        # Plot Polaris
-#        r0 = self.elev2r(self.site_lat)
-#        x = r0 * self.rl * np.sin(np.deg2rad(self.theta)) + self.x0
-#        y = r0 * self.rl * np.cos(np.deg2rad(self.theta)) + self.y0
-#        ax.scatter(x, y, s=50, color='magenta', marker='*', label='Polaris')
-#
-#        # Add colorbars
-#        c = ax.scatter(self.x, self.y, facecolor=cmap2(self.star_az/360.), edgecolor=cmap(self.star_el/90.))
-#        cax = fig.add_axes([0.8, 0.1, 0.02, 0.8])
-#        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, label='Elevation - Edge (deg)')
-#        cax = fig.add_axes([0.9, 0.1, 0.02, 0.8])
-#        fig.colorbar(mpl.cm.ScalarMappable(norm=norm2, cmap=cmap2), cax=cax, label='Azimuth - Face (deg)')
-#        # Add legend
-#        ax.legend()
-#
-#        plt.show()
-#
-#
-#
-#def equalize(image, contrast, num_bins=10000):
-#    """Histogram Equalization to adjust contrast [1%-99%]"""
-#    # copied function from imageops.py
-#    # needed to make the image visable - there may be more efficient ways of doing this
-#
-#    image_array_1d = image.flatten()
-#
-#    image_histogram, bins = np.histogram(image_array_1d, num_bins)
-#    image_histogram = image_histogram[1:]
-#    bins = bins[1:]
-#    cdf = np.cumsum(image_histogram)
-#
-#    # spliced to cut off non-image area
-#    # any way to determine this dynamically?  How periminant is it?
-#    cdf = cdf[:9996]
-#
-#    max_cdf = max(cdf)
-#    max_index = np.argmin(abs(cdf - contrast / 100 * max_cdf))
-#    min_index = np.argmin(abs(cdf - (100 - contrast) / 100 * max_cdf))
-#    vmax = float(bins[max_index])
-#    vmin = float(bins[min_index])
-#    low_value_indices = image_array_1d < vmin
-#    image_array_1d[low_value_indices] = vmin
-#    high_value_indices = image_array_1d > vmax
-#    image_array_1d[high_value_indices] = vmax
-#
-#    return image_array_1d.reshape(image.shape)
 
 
 ####################################################################################
